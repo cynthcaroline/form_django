@@ -40,7 +40,6 @@ def predict_json(request):
     confidence = "%.2f" % (prediction[np.argmax(prediction)] * 100)
     alzheimer = "%.2f" % (prediction[0] * 100)
     nonalzheimer = "%.2f" % (prediction[1] * 100)
-    
 
     
     os.remove(path)
@@ -49,8 +48,16 @@ def predict_json(request):
         'confidence': confidence,
         'alzheimer': alzheimer,
         'nonalzheimer': nonalzheimer,
-        'filename' : img_name
+        'filename' : img_name,
+        'name': request.POST.get('name', ''),
+        'age': request.POST.get('age', ''),
+        'gender': request.POST.get('gender', ''),
+        'keluhan': request.POST.get('keluhan', ''),
+        'tekanan_darah': request.POST.get('tekanan_darah', ''),
+        'panjang_kepala': request.POST.get('panjang_kepala', ''),
+        'mmse': request.POST.get('mmse', ''),
     }
+    utils.gerate_report(data)
 
     return JsonResponse(data)
 

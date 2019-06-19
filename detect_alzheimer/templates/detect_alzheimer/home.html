@@ -18,6 +18,7 @@
   <!-- CSS Just for demo purpose, don't include it in your project -->
   <link href="/media/assets/demo/demo.css" rel="stylesheet" />
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
 </head>
 
 <body class="index-page sidebar-collapse">
@@ -82,7 +83,7 @@
           <div class="row">
             <div class="col-md-6 ml-auto mr-auto">
                <div class="title">
-                  <h3>Upload MRI Image
+                  <h3>Data Pasien
                   </h3>
                 </div>
                 <div class="row">
@@ -94,7 +95,6 @@
 
                     <div class="col-md-6 ml-auto mr-auto">
                       <button type="button" data-toggle="modal" data-target="#add_data_Modal" class="btn btn-primary">Isi Data Pasien</button>
-                      <button id="upload_btn" class="btn btn-primary">Upload Image</button>
                     </div>
                 </div>
             </div>
@@ -154,11 +154,6 @@
   </footer>
 
 
-  <form id="uploadFileForm" enctype="multipart/form-data">
-    <input type="file" id="uploadFile" accept="image/x-png,image/jpeg" name="image" style="display:none;" />
-  </form>
-
-
   <!--   Core JS Files   -->
   <script src="/media/assets/js/core/jquery.min.js" type="text/javascript"></script>
   <script src="/media/assets/js/core/popper.min.js" type="text/javascript"></script>
@@ -187,33 +182,33 @@
         <input type="text" name="name" id="name" class="form-control" />
         <br />
         <label>Usia</label>
-        <input type="text" name = "age" id="age" class="form-control" />
+        <input type="number" name = "age" id="age" class="form-control" />
         <br />
         <label>Jenis Kelamin</label>
         <select name="gender" id="gender" class="form-control">
-         <option value="Male">Laki-Laki</option>
-         <option value="Female">Perempuan</option>
+         <option>Laki-Laki</option>
+         <option>Perempuan</option>
         </select>
         <br />
         <label>Keluhan Utama</label>
         <input type="text" name="keluhan" id="keluhan" class="form-control" />
         <br />
         <label>Tekanan Darah</label>
-        <input type="text" name="tekanan" id="tekanan" class="form-control" />
+        <input type="text" name="tekanan_darah" id="tekanan_darah" class="form-control" />
         <br />
         <label>Skor MMSE</label>
-        <input type="text" name="skor" id="skor" class="form-control" />
-        </select>
+        <input type="number" name="mmse" id="mmse" class="form-control" />
         <br />
         <label>Panjang Kepala</label>
-        <input type="text" name="panjang" id="panjang" class="form-control" />
-        </select>
+        <input type="number" name="panjang_kepala" id="panjang_kepala" class="form-control" />
         <br />
-        <input type="submit" name="insert" id="insert" value="Insert" class="btn btn-success" />
+        <label>Citra MRI</label>
+        <br>
+        <input type="file" id="uploadFile" accept="image/x-png,image/jpeg" name="image"/>
       </form>
       </div>
       <div class="modal-footer">
-       <button type="button" class="btn btn-default" data-dismiss="modal">Tutup</button>
+          <button class="btn btn-success" id="insert" data-dismiss="modal">INSERT</button>
       </div>
      </div>
     </div>
@@ -222,10 +217,6 @@
 
 
 <script>
-
-     $("#upload_btn").click(function () {
-       $('#uploadFile').click();
-     });
 
      function readURL(input) {
         if (input.files && input.files[0]) {
@@ -237,11 +228,22 @@
         }
       }
 
-      $('#uploadFile').on( 'change', function () {
-            readURL(this);
-            var fd = new FormData($('uploadFileForm'));
-            var files = this.files[0];
-            fd.append('image',files);
+    $('#uploadFile').on('change', function() {
+      readURL(this);
+    });
+
+
+    function show_result(response) {
+      var opt = 'Hasil pengenalan oleh sistem <strong>Alzheimer AI</strong> menyatakan citra MRI pasien dengan nama <strong>' + response.name + '</strong> adalah <strong>' + response.label +' </strong> dengan akurasi sebesar <strong>' + response.confidence + '%</strong>. <a href="/media/result/report.docx" download>Download Report</a>'
+      $('#result').html(opt);
+    }
+
+      $('#insert').on( 'click', function () {
+            var dataform = document.getElementById('insert_form')
+            var fd = new FormData(dataform);
+            var error = false;
+            var errorCode = ''
+            var errorText = ''
             $.ajax({
                 url: "http://127.0.0.1:8000/predict_json/",
                 type: 'POST',
@@ -249,15 +251,45 @@
                 contentType: false,
                 processData: false,
                 beforeSend: function(){
-                  console.log('before send');
-                },
+                  Swal.fire({
+                        title: 'Loading...',
+                        html: 'Silahkan tunggu untuk melihat hasil deteksi.',
+                        onBeforeOpen: () => {
+                          Swal.showLoading()
+                        }
+                      });
+                  },
                 success: function(response){
-                  $('#uploadFileForm')[0].reset();
-                  var opt = 'Hasil pengenalan oleh sistem <strong>Alzheimer AI</strong> menyatakan citra MRI <strong>' + response.filename + '</strong> adalah <strong>' + response.label +' </strong> dengan akurasi sebesar <strong>' + response.confidence + '%</strong>.'
-                  $('#result').html(opt);
+                  dataform.reset();
+                  show_result(response);
+                  console.log(response);
+                },
+                error: function (jqXHR, exception) {
+                    console.log();
+                    errorCode = jqXHR.status;
+                    errorText = jqXHR.statusText;
+                    error = true;
+                    // Your error handling logic here..
                 },
                 complete:function(data){
-                  console.log('completed')
+                  Swal.close();
+                  if (error == true) {
+                    Swal.fire({
+                      position: 'top-end',
+                      type: 'error',
+                      title: errorCode + ': ' + errorText,
+                      showConfirmButton: false,
+                      timer: 2000
+                    });
+                  } else{
+                    Swal.fire({
+                      position: 'top-end',
+                      type: 'success',
+                      title: 'Deteksi berhasil!',
+                      showConfirmButton: false,
+                      timer: 2000
+                    });
+                  }
                 }
             });
           });
